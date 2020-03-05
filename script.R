@@ -9,11 +9,11 @@
 # load the data from "data/wholesale_customers.csv"
 customers.data <- read.csv(file = "data/wholesale_customers.csv")
 
-# print the structure
+# examine the data structure
 str(customers.data)
 
 # check for missing values
-which(complete.cases(customers.data)==F)
+which(complete.cases(customers.data)==FALSE)
 
 # laod ggplot2 library
 library(ggplot2)
@@ -34,9 +34,9 @@ horeca.data <- subset(customers.data, Channel == 'Horeca')
 summary(retail.data)
 
 # remove the Channel variable
-retail.data <- retail.data[,-1]
+retail.data$Channel <- NULL
 
-# check for outliers for all numeric variables
+# compute the number of outliers for all numeric variables
 apply(X = retail.data[,-1], # all variables except Region
       MARGIN = 2,
       FUN = function(x) length(boxplot.stats(x)$out))
@@ -81,9 +81,10 @@ summary(retail.data)
 # print the matrix of scatterplots for all numeric variables
 pairs(~Fresh+Frozen+Grocery+Milk+Delicatessen+Detergents_Paper, data = retail.data)
 
-# plot the scatterplot for the variablesFrozen and Milk
+# plot the scatterplot for the variables Frozen and Milk
 ggplot(data=retail.data, aes(x=Frozen, y=Milk)) + 
-  geom_point(shape=1)
+  geom_point() +
+  theme_bw()
 
 # create a subset of the data with variables Frozen and Milk
 retail.data1 <- retail.data[, c("Frozen", "Milk")]
@@ -103,8 +104,11 @@ retail.data1.norm <- as.data.frame(apply(retail.data1, 2, normalize.feature))
 # print the summary
 summary(retail.data1.norm)
 
-# set the seed
-set.seed(3108)
+# open the documentation for the kmeans function
+?kmeans
+
+# set the seed to assure replicability of the results
+set.seed(5320)
 
 # run the clustering with 4 clusters, iter.max=20, nstart=1000
 simple.4k <- kmeans(x = retail.data1.norm, centers=4, iter.max=20, nstart=1000)
@@ -119,26 +123,27 @@ retail.data1.norm$cluster <- factor(simple.4k$cluster)
 head(retail.data1.norm)
 
 # plot the clusters along with their centroids
-ggplot(data=retail.data1.norm, aes(x=Frozen, y=Milk, colour=cluster)) + # color the points by their respective clusters
+ggplot(data=retail.data1.norm, aes(x=Frozen, y=Milk, colour=cluster)) + 
   geom_point() + 
-  xlab("Annual spending on frozen products") + 
-  ylab("Annual spending on dairy products") + 
-  ggtitle("Retail customers annual spending") + 
+  labs(x = "Annual spending on frozen products",
+       y = "Annual spending on dairy products",
+       title = "Retail customers annual spending") + 
+  theme_bw() +
   geom_point(data=as.data.frame(simple.4k$centers), colour="black", size=4, shape=17) # add cluster centers
 
 #################################
 # Selecting the Best Value for K
 #################################
 
-# create an empty data frame
+# create an empty data frame for storing evaluation measures for different k values
 eval.metrics.2var <- data.frame()
 
-# remove the column with clusters
+# remove the column with cluster assignments
 retail.data1.norm$cluster <- NULL
 
 # run kmeans for all K values in the range 2:8
 for (k in 2:8) {
-  set.seed(3108)
+  set.seed(5320)
   km.res <- kmeans(x=retail.data1.norm, centers=k, iter.max=20, nstart = 1000)
 
   # combine cluster number and the error measure, write to df
@@ -146,30 +151,34 @@ for (k in 2:8) {
                              c(k, km.res$tot.withinss, km.res$betweenss/km.res$totss)) 
 }
 
-# update the column names
-names(eval.metrics.2var) <- c("cluster", "tot.within.ss", "ratio")
+# assign more meaningful column names
+names(eval.metrics.2var) <- c("k", "tot.within.ss", "ratio")
 
-# print the metrics
+# print the evaluation metrics
 eval.metrics.2var
 
-# plot the line chart for cluster vs. tot.within.ss 
-ggplot(data=eval.metrics.2var, aes(x=cluster, y=tot.within.ss)) + 
+# plot the line chart for K values vs. tot.within.ss 
+ggplot(data=eval.metrics.2var, aes(x=k, y=tot.within.ss)) + 
   geom_line() +
-  ggtitle("Reduction in error for different values of K\n") +
-  xlab("\nClusters") + 
-  ylab("Total Within Cluster Sum of Squares\n") +
+  labs(x = "\nK (cluster number)", 
+       y = "Total Within Cluster Sum of Squares\n",
+       title = "Reduction in error for different values of K\n") + 
+  theme_bw() +
   scale_x_continuous(breaks=seq(from=0, to=8, by=1))
 
 # load the source code from the Utility.R file
 source("Utility.R")
 
-# calculate the ratio difference for different K values (from 2 to 8) 
+# calculate the difference in tot.within.ss and in ratio for each two consecutive K values
 data.frame(K=2:8, 
            tot.within.ss.delta=compute.difference(eval.metrics.2var$tot.within.ss),
            ratio.delta=compute.difference(eval.metrics.2var$ratio))
 
+
+# We'll examine the solution with k=3, as that seems to be the best K value
+
 # set the seed value
-set.seed(3108)
+set.seed(5320)
 
 # run the clustering for 3 clusters, iter.max=20, nstart=1000
 simple.3k <- kmeans(x = retail.data1.norm, centers=3, iter.max=20, nstart=1000)
@@ -202,34 +211,37 @@ retail.norm <- as.data.frame(apply(retail.data[,c(2:7)], 2, normalize.feature))
 # print the summary
 summary(retail.norm)
 
-# create an empty data frame
+# create an empty data frame to store evaluation measures
 eval.metrics.6var <- data.frame()
 
-# run kmeans for all K values in the range 2:8
+# run kmeans for K values in the range 2:8
 for (k in 2:8) {
   set.seed(3108)
   km.res <- kmeans(x=retail.norm, centers=k, iter.max=20, nstart = 1000)
-  # combine cluster number and the error measure, write to df
+  # combine the K value and the evaluation measures, write to df
   eval.metrics.6var <- rbind(eval.metrics.6var, 
                              c(k, km.res$tot.withinss, km.res$betweenss/km.res$totss)) 
 }
 
-# update the column names
+# assign meaningful column names
 names(eval.metrics.6var) <- c("cluster", "tot.within.ss", "ratio")
 eval.metrics.6var
 
 # plot the clusters along with their centroids
-ggplot(data=eval.metrics.6var, aes(x=cluster, y=tot.within.ss)) + 
+ggplot(data=eval.metrics.6var, aes(x=k, y=tot.within.ss)) + 
   geom_line() +
-  ggtitle("Reduction in error for different values of K\n") +
-  xlab("\nClusters") + 
-  ylab("Total Within Cluster Sum of Squares\n") +
+  labs(x = "\nK (cluster number)", 
+       y = "Total Within Cluster Sum of Squares\n",
+       title = "Reduction in error for different values of K\n") + 
+  theme_bw() +
   scale_x_continuous(breaks=seq(from=0, to=8, by=1))
 
-# calculate the ratio difference for different K values (from 2 to 8) 
+# the plot suggests 3 clusters, but we'll also calculate
+# the difference in tot.within.ss and in ratio for each two consecutive K values
 data.frame(k=c(2:8),
            tot.within.ss.delta=compute.difference(eval.metrics.6var$tot.within.ss),
            ration.delta=compute.difference(eval.metrics.6var$ratio))
+
 
 # set the seed
 set.seed(3108)

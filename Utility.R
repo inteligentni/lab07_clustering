@@ -4,12 +4,12 @@
 
 ## function that computes the difference between two subsequent values
 compute.difference <- function(values) {
-  dif <- vector(mode = "numeric", length = length(values))
-  dif[1] <- NA
+  dif <- list()
+  dif[[1]] <- NA
   for(i in 1:(length(values)-1)) {
-    dif[i+1] <- abs(values[i+1] - values[i])
+    dif[[i+1]] <- abs(values[i+1] - values[i])
   }
-  dif
+  unlist(dif)
 }
 
 ## function that provides summary statistics about clusters
