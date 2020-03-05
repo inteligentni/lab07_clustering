@@ -1,19 +1,20 @@
 ---
 title: "K-means Clustering"
 output:
+  word_document: default
+  rmarkdown::pdf_document:
+    fig_caption: yes
+    includes:
+      in_header: preamble-latex.tex
   pdf_document:
     fig_caption: yes
     fig_crop: no
     keep_tex: yes
     number_sections: yes
-  rmarkdown::pdf_document:
-    fig_caption: yes        
-    includes:  
-      in_header: preamble-latex.tex
-urlcolor: blue
-header-includes: 
+header-includes:
 - \usepackage{graphicx}
 - \usepackage{float}
+urlcolor: blue
 ---
 ```{r echo=FALSE,warning=FALSE}
 library(knitr)
@@ -26,11 +27,11 @@ opts_chunk$set(cache.path='cache/graphics-',
                )
 ```
 
-# Short Intro
+# Short Intro to k-means
 
 K-means clustering is an unsupervised machine learning algorithm. Unsupervised algorithms make inferences using only input data without referring to known, or labeled outcomes. The goal of the K-means is to group similar observations together and discover underlying patterns.
 
-An input to the K-means algorithm is a number **k**, which refers to the number of groups (clusters) that the observations will be grouped into. The algorithm actually finds centers of those clusters (called *centroids*) and allocates each observation to the nearest cluster. The objective of the K-means is to minimize the in-cluster sum of squares, that is the sum of the squared distance of every point to its corresponding cluster centroid.
+K-means algorithm has one input parameter - **k** - which refers to the number of groups (clusters) that the observations should be grouped into. The algorithm actually finds centers of those clusters, which are called *centroids*; it allocates each observation to a cluster based the nearest cluster centroid. The objective of the K-means is to minimize the in-cluster sum of squares, that is the sum of the squared distance of every point to its corresponding cluster centroid.
 
 Steps of the K-means algorithm:
 
@@ -38,13 +39,13 @@ Steps of the K-means algorithm:
 
 Repeat:
 
-2) Cluster assignment: For each instance from the data set, identify the nearest centroid (usually based on the Euclidean distance) and assign the instance to the cluster of that centroid.
+2) Cluster assignment: For each observation from the data set, identify the nearest centroid (usually based on the Euclidean distance) and assign the observation to the cluster of that centroid.
 
-3) Centroid update: for each cluster, calculate a new centroid by taking the mean of all data points assigned to that centroid's cluster.
+3) Centroid update: for each cluster, calculate a new centroid by taking the mean of all observations assigned to that cluster.
   
-The algorithm iterates between steps 2 and 3 until no data points change clusters, the sum of the distances is minimized, or a maximum number of iterations is reached.
+The algorithm iterates between steps 2 and 3 until one of the following conditions is met: i) no observation changes its cluster; ii) the sum of the distances is minimized (that is, falls beneath the threshold); iii) the maximum number of iterations is reached.
 
-The result may be a local optimum (which may not necessarily be the best possible outcome). This means that running the algorithm with randomized starting centroids may give better results.
+The result of the algorithm may be a local optimum that is not necessarily the best possible outcome. Therefore k-means algorithm is typically run several times, each time with a different (randomized) set of initial centroids. Eventually, the result of the best run is consider the final one.
 
 ## K-means Example
 
@@ -63,7 +64,7 @@ In the **Step 3**, we update the cluster centroids and assign them a new value b
 knitr::include_graphics(rep('images/steps_2_3_iter1.png'))
 ```
 
-In the next iteration (Iteration 2), we repeat Steps 2 and 3 (Fig. 3). In the **Step 2**, we again assign each data point (observation) with a cluster. We can observe that two data points changed their cluster, i.e. they switched the cluster. After that, in the **Step 3**, we again calculate new centroid positions with the mean value of all the observations that currently belong to the corresponding clusters.
+In the next iteration (Iteration 2), we repeat Steps 2 and 3 (Fig. 3). In **Step 2**, we again assign each data point (observation) to a cluster. We can observe that two data points changed their cluster, i.e. they switched the cluster. After that, in **Step 3**, we again calculate new centroids as the mean value of all the observations that currently belong to the corresponding clusters.
 
 ```{r fig.align='center', echo=FALSE, out.width = "350px", fig.cap="Cluster assignment and centroid update (Iteration 2)"}
 knitr::include_graphics(rep('images/steps_2_3_iter2.png'))
@@ -73,9 +74,9 @@ In Iteration 3, none of the observations would change their cluster. This means 
 
 # Load and prepare data set
 
-*Wholesale Customer dataset* contains data about clients of a wholesale distributor. It includes the annual spending in monetary units (m.u.) on diverse product categories. The dataset is available from the [UCI ML Repository](https://archive.ics.uci.edu/ml/datasets/Wholesale+customers) (the dataset used in this script is partially preprocessed, where *Channel* and *Region* attributes are factorized and outliers were removed for some variables).
+*Wholesale Customer dataset* contains data about clients of a wholesale distributor. It includes the annual spending in monetary units (m.u.) on diverse product categories. The dataset is available from the [UCI ML Repository](https://archive.ics.uci.edu/ml/datasets/Wholesale+customers). Note that the dataset used in this script is not the original one; the original data were partially preprocessed, which included the transformation of the *Channel* and *Region* attributes into factors as well as removal of outliers for some of the variables.
 
-The objective is to segment (cluster) customers.
+The objective is to segment (cluster) clients of the wholesale distributor.
 
 Let's load the dataset.
 
@@ -83,7 +84,7 @@ Let's load the dataset.
 # load the data from "data/wholesale_customers.csv"
 customers.data <- read.csv(file = "data/wholesale_customers.csv")
 
-# print the structure
+# examine the data structure
 str(customers.data)
 ```
 
@@ -93,14 +94,14 @@ We will first check if there are observations with missing values. If missing va
 
 ```{r}
 # check for missing values
-which(complete.cases(customers.data)==F)
+which(complete.cases(customers.data)==FALSE)
 ```
 
 In our dataset, there are no missing values.
 
-Since the algorithm is based on measuring distances (e.g. Euclidean), this implies that **all variables must be continuous** and the approach can be severely **affected by outliers**. So, we should check if outliers are present. We will check only numerical variables that will be used for clustering.
+Since the algorithm is based on measuring distances (e.g. Euclidean), this implies that **all variables must be continuous** and the approach can be severely **affected by outliers**. So, we will use only numerical variables and will check if outliers are present. 
 
-Box-plots are useful for the detection of outliers. More details on how to analyze the box plot can be found [here]( https://flowingdata.com/2008/02/15/how-to-read-and-use-a-box-and-whisker-plot/).
+Box-plots are useful for the detection of outliers. More details on how to analyze box plots can be found [here](https://flowingdata.com/2008/02/15/how-to-read-and-use-a-box-and-whisker-plot/).
 
 ```{r echo=FALSE}
 # laod ggplot2 library
@@ -117,7 +118,7 @@ ggplot(customers.data, aes(x=Channel, y=Fresh, fill=Channel)) + geom_boxplot()
 ggplot(customers.data, aes(x=Channel, y=Detergents_Paper, fill=Channel)) + geom_boxplot()
 ```
 
-It seems that only 2 variables have outliers.
+A couple of variables have outliers namely Grocery, Milk, and Frozen.
 
 The plots also suggest that there is a considerable difference between the two distribution channels, so it would be better to examine and cluster each of them separately.
 
@@ -127,7 +128,8 @@ retail.data <- subset(customers.data, Channel == 'Retail')
 horeca.data <- subset(customers.data, Channel == 'Horeca')
 ```
 
-Let's focus first on the *retail.data* (**for the homework**: do the same with the *horeca.data*).
+In the following, we will focus on the *retail.data*. **For the homework**: do the same with the *horeca.data*.
+
 ```{r}
 # print the summary of the retail.data
 summary(retail.data)
@@ -137,13 +139,13 @@ Remove the *Channel* variable as we now have just one channel.
 
 ```{r}
 # remove the Channel variable
-retail.data <- retail.data[,-1]
+retail.data$Channel <- NULL
 ```
 
 Check which variables have outliers.
 
 ```{r}
-# check for outliers for all numeric variables
+# compute the number of outliers for all numeric variables
 apply(X = retail.data[,-1], # all variables except Region
       MARGIN = 2,
       FUN = function(x) length(boxplot.stats(x)$out))
@@ -151,9 +153,9 @@ apply(X = retail.data[,-1], # all variables except Region
 
 So, *Grocery* and *Frozen* variables have outliers that we need to deal with.
 
-As a way of dealing with outliers, we'll use the [Winsorizing technique](https://en.wikipedia.org/wiki/Winsorizing). Practically, it consists of replacing extreme values with a specific percentile of the data, typically 90th or 95th.
+As a way of dealing with outliers, we'll use the [Winsorizing technique](https://en.wikipedia.org/wiki/Winsorizing). Practically, it consists of replacing extreme values with a specific percentile of the data, typically 90th or 95th for overly high values and 5th percentile for overly low values.
 
-Let's start with the *Grocery* variable. We will extract the outliers and sort them by their values.
+Let's start with the *Grocery* variable. We will identify the outliers and sort them by their values.
 
 ```{r}
 # sort all outliers of the Grocery variable
@@ -167,7 +169,7 @@ Now, we examine the 90th, 95th, ... percentile.
 quantile(retail.data$Grocery, probs = seq(from = 0.9, to = 1, by = 0.025))
 ```
 
-The 95th percentile seems to be a good cutting point.
+The 95th percentile seems to be a good cutting point since it is not an outlier, but is closest to the smallest outlier (`r sort(boxplot.stats(retail.data$Grocery)$out)[1]`)  
 
 ```{r}
 # store the 95th percentile of the Grocery variable to a new variable
@@ -177,19 +179,21 @@ new.max <- as.numeric(quantile(retail.data$Grocery, probs = 0.95))
 retail.data$Grocery[retail.data$Grocery > new.max] <- new.max
 ```
 
-By drawing the box plot for the *Grocery* variable again we will see that there are no outliers present anymore.
+By drawing the box plot for the *Grocery* variable again we will see that no outliers are present anymore.
 
 ```{r fig.height=4, fig.width=4}
 # print the boxplot for the Grocery variable
 boxplot(retail.data$Grocery, xlab='Grocery')
 ```
 
-Now, we'll deal with outliers for the *Frozen* variable.
+Now, we'll deal, in the same manner, with outliers for the *Frozen* variable.
 
 ```{r}
 # sort all outliers of the Frozen variable
 sort(boxplot.stats(retail.data$Frozen)$out)
+```
 
+```{r}
 # examine percentiles of the Frozen variable higher than the 90th percentile
 quantile(retail.data$Frozen, probs = c(seq(0.9, 1, 0.025)))
 ```
@@ -216,9 +220,9 @@ summary(retail.data)
 
 # Clustering with 2 Features
 
-Let's choose only two features for this initial, simple clustering. For the sake of an example, let's pick Frozen and Milk variables.
+Let's choose only two features for this initial, simple clustering.
 
-*NOTE:* We will choose only two features in order to demonstrate the algorithm. But in reality, all numerical variables (that make sense) should be taken into consideration.
+*NOTE:* Clustering with two features only is used here just for the sake of clearer exlanation of the clustering steps and the results; in real-world situations, multiple (numerical) features are used for clustering. 
 
 ```{r}
 # print the matrix of scatterplots for all numeric variables
@@ -228,9 +232,10 @@ pairs(~Fresh+Frozen+Grocery+Milk+Delicatessen+Detergents_Paper, data = retail.da
 By looking at the plots, no particular pattern can be observed. But for the sake of an example, let's pick *Frozen* and *Milk* variables. Get a closer look at selected variables.
 
 ```{r fig.height=4}
-# plot the scatterplot for the variablesFrozen and Milk
+# plot the scatterplot for the variables Frozen and Milk
 ggplot(data=retail.data, aes(x=Frozen, y=Milk)) + 
-  geom_point(shape=1)
+  geom_point() +
+  theme_bw()
 ```
 
 No clear pattern in the data, but let's run K-means and see if some clusters will emerge.
@@ -249,7 +254,7 @@ When variables are in incomparable units and/or the numeric values are on very d
 
 $$Z = \frac{X - min(X)}{max(X) - min(X)}$$
 
-Let's create q function for performing the normalization.
+Let's create a function for performing the normalization.
 
 ```{r}
 # function for performing the normalization
@@ -269,11 +274,19 @@ retail.data1.norm <- as.data.frame(apply(retail.data1, 2, normalize.feature))
 summary(retail.data1.norm)
 ```
 
-Run the K Means algorithm, specifying, for example, 4 centers. *'iter.max'* defines the maximum number of iterations. This overcomes the problem of situations where there is a slow convergence. This clustering approach can be sensitive to the initial selection of centroids. *'nstart'* option attempts multiple initial configurations and reports on the best one. Afterward, we inspect the results.
+Run the K Means algorithm using the *kmeans* function
 
 ```{r}
+# open the documentation for the kmeans function
+?kmeans
+```
+
+Initially, we will try to group data into, for example, 4 clusters (k=4). We use the *iter.max* parameter to define the maximum number of iterations. This overcomes the problem of slow (or no) convergence. K-means tends to be sensitive to the initial selection of centroids. Thus, *nstart* parameter is used to indicate the number of initial configurations to try (and eventually select the best one). 
+
+Since the initial cluster centers (centroids) are randomly selected, we need to set the seed to assure replicability of the results.
+```{r}
 # set the seed
-set.seed(3108)
+set.seed(5320)
 
 # run the clustering with 4 clusters, iter.max=20, nstart=1000
 simple.4k <- kmeans(x = retail.data1.norm, centers=4, iter.max=20, nstart=1000)
@@ -284,15 +297,15 @@ simple.4k
 
 From the output, we can observe the following evaluation metrics:
 
-- **within_SS (within-cluster sum of squares)**: The sum of squared differences between individual data points in a cluster and the cluster center (centroid). It is computed for each cluster;
+- **within_SS (within-cluster sum of squares)**: The sum of squared differences between individual data points in a cluster and the cluster center (centroid). It is computed for each cluster separately;
 
 - **total_SS (total sum of squares)**: The sum of squared differences of each data point to the global sample mean;
 
-- **between_SS (between cluster sum of squares)**: The sum of squared differences of each centroid to the global sample mean (when computing this value, the squared difference of each cluster center to the global sample mean is multiplied by the number of data points in that cluster);
+- **between_SS (between cluster sum of squares)**: The sum of squared differences of each centroid to the global sample mean; when computing this value, the squared difference of each cluster center to the global sample mean is multiplied by the number of data points in that cluster;
 
-- **between_SS / total_SS**: This ratio indicates how 'well' the sample splits into clusters; the higher the ratio, the better the clustering. The maximum is 1.
+- **between_SS / total_SS**: This ratio indicates how well the sample splits into clusters; the higher the ratio, the better the clustering. The maximum is 1.
 
-Add the vector of clusters to the data frame as a new variable *'cluster'* and plot it.
+Add the vector of cluster assignments to the data frame as a new variable *cluster* and plot it.
 
 ```{r}
 # add the cluster as a new variable to the dataset
@@ -302,47 +315,46 @@ retail.data1.norm$cluster <- factor(simple.4k$cluster)
 head(retail.data1.norm)
 ```
 
-Let's plot the data and new centroids. 
+Let's plot the data and new centroids to visually inspect the clusters. 
 
 ```{r fig.height=4}
 # plot the clusters along with their centroids and color the points by their respective clusters
 ggplot(data=retail.data1.norm, aes(x=Frozen, y=Milk, colour=cluster)) + 
   geom_point() + 
-  xlab("Annual spending on frozen products") + 
-  ylab("Annual spending on dairy products") + 
-  ggtitle("Retail customers annual spending") + 
+  labs(x = "Annual spending on frozen products",
+       y = "Annual spending on dairy products",
+       title = "Retail customers annual spending") + 
+  theme_bw() +
   # add cluster centers
   geom_point(data=as.data.frame(simple.4k$centers), colour="black", size=4, shape=17) 
 ```
 
-The plot allows us to visually inspect the clusters, but it is better to have a more systematic approach to judging the quality of clustering and selecting the best value for K.
+We have set K to 4 by making a random guess. However, we should adopt a more systematic approach to selecting the value for K.
 
-# Selecting the Best Value for K
+# Selecting the Best Value for K (the Elbow Method)
 
-## Selection based on the Elbow Method
+Instead of guessing the best value for K, we can take a more systematic approach to choosing that value. It is called the **Elbow method**, and is based on the sum of squared differences between data points and cluster centers, that is, the sum of *within_SS* for all the clusters (*tot.withinss*).
 
-Instead of guessing the correct value for K, we can take a more systematic approach to choose the 'right' K. It is called the **Elbow method**, and is based on the sum of squared differences between data points and cluster centers, that is, the sum of *within_SS* for all the clusters (tot.withinss).
-
-Let us run the K-means for different values for K (from 2 to 8). We will compute the metric required for the Elbow method (tot.withinss). Along the way, we'll also compute the other metric: *ratio of between_SS and total_SS*.
+Let us run the K-means for different values for K (from 2 to 8). We will compute the metric required for the Elbow method (*tot.withinss*). Along the way, we'll also compute another useful metric: *ratio of between_SS and total_SS*.
 
 ```{r}
-# create an empty data frame
+# create an empty data frame for storing evaluation measures for different k values
 eval.metrics.2var <- data.frame()
 
-# remove the column with clusters
+# remove the column with cluster assignments
 retail.data1.norm$cluster <- NULL
 
 # run kmeans for all K values in the range 2:8
 for (k in 2:8) {
-  set.seed(3108)
+  set.seed(5320)
   km.res <- kmeans(x=retail.data1.norm, centers=k, iter.max=20, nstart = 1000)
-  # combine cluster number and the error measure, write to df
+  # combine cluster number and the evaluation measures, write to df
   eval.metrics.2var <- rbind(eval.metrics.2var, 
                              c(k, km.res$tot.withinss, km.res$betweenss/km.res$totss)) 
 }
 
-# update the column names
-names(eval.metrics.2var) <- c("cluster", "tot.within.ss", "ratio")
+# assign more meaningful column names
+names(eval.metrics.2var) <- c("k", "tot.within.ss", "ratio")
 
 # print the metrics
 eval.metrics.2var
@@ -351,34 +363,35 @@ eval.metrics.2var
 Draw the Elbow plot.
 
 ```{r fig.height=4}
-# plot the line chart for cluster vs. tot.within.ss 
-ggplot(data=eval.metrics.2var, aes(x=cluster, y=tot.within.ss)) + 
+# plot the line chart for K values vs. tot.within.ss 
+ggplot(data=eval.metrics.2var, aes(x=k, y=tot.within.ss)) + 
   geom_line() +
-  ggtitle("Reduction in error for different values of K\n") +
-  xlab("\nClusters") + 
-  ylab("Total Within Cluster Sum of Squares\n") +
+  labs(x = "\nK (cluster number)", 
+       y = "Total Within Cluster Sum of Squares\n",
+       title = "Reduction in error for different values of K\n") + 
+  theme_bw() +
   scale_x_continuous(breaks=seq(from=0, to=8, by=1))
 ```
 
 It seems that *K=3* or *K=4* would be the best options for the number of clusters.
 
-If it is not fully clear from the plot where we have a significant decrease in the *tot.within.ss* value, we can compute the difference between every two subsequent values. We will load the file with our utility functions (code is given at the end of the script) and call our custom function *compute.difference*.
+If it is not fully clear from the plot where we have a significant decrease in the *tot.within.ss* value, we can compute the difference between every two subsequent values. We will load the script with our utility functions (code is given at the end of the file) and call our custom function *compute.difference*.
 
 ```{r}
 # load the source code from the Utility.R file
 source("Utility.R")
 
-# calculate the ratio difference for different K values (from 2 to 8) 
+# calculate the difference in tot.within.ss and in ratio for each two consecutive K values (from 2 to 8) 
 data.frame(K=2:8, 
            tot.within.ss.delta=compute.difference(eval.metrics.2var$tot.within.ss),
            ratio.delta=compute.difference(eval.metrics.2var$ratio))
 ```
 
-As we've already examined the solution with 4 clusters, let's also examine the solution with K=3.
+The results suggest that the largest drop is between k=2 and k=3. So, let's examine the solution with k=3.
 
 ```{r}
 # set the seed value
-set.seed(3108)
+set.seed(5320)
 
 # run the clustering for 3 clusters, iter.max=20, nstart=1000
 simple.3k <- kmeans(x = retail.data1.norm, centers=3, iter.max=20, nstart=1000)
@@ -392,15 +405,15 @@ Plot the 3-cluster solution.
 ```{r fig.height=4}
 # plot the clusters along with their centroids
 ggplot(data=retail.data1.norm, aes(x=Frozen, y=Milk, colour=cluster)) + 
-    geom_point() +
-    xlab("Annual spending on frozen products") +
-    ylab("Annual spending on dairy products") +
-    ggtitle("Retail customers annual spending") +
-    geom_point(data=as.data.frame(simple.3k$centers),
-                     colour="black",size=4, shape=17)
+  geom_point() + 
+  labs(x = "Annual spending on frozen products",
+       y = "Annual spending on dairy products",
+       title = "Retail customers annual spending") + 
+  theme_bw() +
+  geom_point(data=as.data.frame(simple.3k$centers), colour="black", size=4, shape=17) 
 ```
 
-Next, we examine clusters closer by looking into the cluster centers (mean) and standard deviation from the centers. When examining clusters - in order to interpret them - we use 'regular' (not normalized) features. The *summary.stats()* f. used below is a custom function defined in the *Utility.R*.
+Next, we examine clusters closer by looking into the cluster centers (mean) and standard deviation from the centers. When examining clusters - in order to interpret them - we typically use 'regular' (not normalized) features. The *summary.stats()* f. used below is a custom function defined in the *Utility.R*.
 
 ```{r}
 # calculate the mean and sd values for all three clusters 
@@ -411,7 +424,7 @@ sum.stats <- summary.stats(feature.set = retail.data1,
 sum.stats
 ```
 
-The solution with **K=4** seems to be better as features are less dispersed than here (e.g. the *Milk* variable in cluster 3, and *Frozen* variable in cluster 2 have very high dispersion). The solution with **K=4** resolves this (check the plot and examine cluster centers).
+Considering the high level of dispersion around the cluster centers (observe the high value of SD in all clusters and for both variables), it might be that the solution with K=4 clusters (the inital one) is better after all. To check if that is the case, for K=4, compute the cluster centers (mean) and dispersion (SD).
 
 # Clustering with All Numeric Features
 
@@ -428,20 +441,20 @@ summary(retail.norm)
 Instead of guessing K, we'll right away use the Elbow method to find the optimal value for K.
 
 ```{r}
-# create an empty data frame
+# create an empty data frame to store evaluation measures
 eval.metrics.6var <- data.frame()
 
-# run kmeans for all K values in the range 2:8
+# run kmeans for K values in the range 2:8
 for (k in 2:8) {
-  set.seed(3108)
+  set.seed(5320)
   km.res <- kmeans(x=retail.norm, centers=k, iter.max=20, nstart = 1000)
-  # combine cluster number and the error measure, write to df
+  # combine the K value and the evaluation measures, write to df
   eval.metrics.6var <- rbind(eval.metrics.6var, 
                              c(k, km.res$tot.withinss, km.res$betweenss/km.res$totss)) 
 }
 
-# update the column names
-names(eval.metrics.6var) <- c("cluster", "tot.within.ss", "ratio")
+# assign meaningful column names
+names(eval.metrics.6var) <- c("k", "tot.within.ss", "ratio")
 eval.metrics.6var
 ```
 
@@ -449,20 +462,20 @@ Draw the Elbow plot.
 
 ```{r fig.height=4}
 # plot the clusters along with their centroids
-ggplot(data=eval.metrics.6var, aes(x=cluster, y=tot.within.ss)) + 
+ggplot(data=eval.metrics.6var, aes(x=k, y=tot.within.ss)) + 
   geom_line() +
-  ggtitle("Reduction in error for different values of K\n") +
-  xlab("\nClusters") + 
-  ylab("Total Within Cluster Sum of Squares\n") +
+  labs(x = "\nK (cluster number)", 
+       y = "Total Within Cluster Sum of Squares\n",
+       title = "Reduction in error for different values of K\n") + 
+  theme_bw() +
   scale_x_continuous(breaks=seq(from=0, to=8, by=1))
 ```
 
-This time it seems that the solution with 3 clusters might be the best.
-
-As previously done, we'll also look for the best value for K by examining the difference between every two subsequent values of tot.within.ss and ratio (of *between.SS* and *total.SS*).
+This time it is clearer that the solution with 3 clusters might be the best.
+Still, we'll also examine the difference between each two consecutive values of tot.within.ss and ratio (of *between.SS* and *total.SS*).
 
 ```{r}
-# calculate the ratio difference for different K values (from 2 to 8) 
+# calculate the difference in tot.within.ss and in ratio for each two consecutive K values
 data.frame(k=c(2:8),
            tot.within.ss.delta=compute.difference(eval.metrics.6var$tot.within.ss),
            ration.delta=compute.difference(eval.metrics.6var$ratio))
@@ -474,29 +487,32 @@ Let's examine in detail clustering with K=3.
 
 ```{r}
 # set the seed
-set.seed(3108)
+set.seed(5320)
 
 # run the clustering for 3 clusters, iter.max=20, nstart=1000
 retail.3k.6var <- kmeans(x=retail.norm, centers=3, iter.max=20, nstart = 1000)
 
 # examine cluster centers
-sum.stats <- summary.stats(feature.set = retail.norm, #retail.data[,c(2:7)], 
+sum.stats <- summary.stats(feature.set = retail.norm, # retail.data[,c(2:7)],
                            clusters = retail.3k.6var$cluster, 
                            cl.num = 3)
 sum.stats
 ```
+
+**TASK**: try to describe the 3 groups (clusters) of customers based on the items they purchased more / less (compared to the other groups).
+
 
 # Appendix: Utility Functions ('Utility.R' file)
 
 ```{r}
 ## function that computes the difference between two consecutive values
 compute.difference <- function(values) {
-  dif <- vector(mode = "numeric", length = length(values))
-  dif[1] <- NA
+  dif <- list()
+  dif[[1]] <- NA
   for(i in 1:(length(values)-1)) {
-    dif[i+1] <- abs(values[i+1] - values[i])
+    dif[[i+1]] <- abs(values[i+1] - values[i])
   }
-  dif
+  unlist(dif)
 }
 
 ## function that provides summary statistics about clusters

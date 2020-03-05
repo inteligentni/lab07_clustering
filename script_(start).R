@@ -9,7 +9,7 @@
 # load the data from "data/wholesale_customers.csv"
 
 
-# print the structure
+# examine the data structure
 
 
 # check for missing values
@@ -21,7 +21,9 @@
 # plot boxplots for all numeric variables
 
 
+
 # split the dataset into two subsets based on the value of the Channel variable
+
 
 
 # print the summary of the retail.data
@@ -30,7 +32,7 @@
 # remove the Channel variable
 
 
-# check for outliers for all numeric variables
+# compute the number of outliers for all numeric variables
 
 
 # sort all outliers of the Grocery variable
@@ -73,7 +75,8 @@
 # print the matrix of scatterplots for all numeric variables
 
 
-# plot the scatterplot for the variablesFrozen and Milk
+# plot the scatterplot for the variables Frozen and Milk
+
 
 
 # create a subset of the data with variables Frozen and Milk
@@ -83,10 +86,7 @@
 
 
 # function for performing the normalization
-normalize.feature <- function( feature ) {
-  if ( sum(feature, na.rm = T) == 0 ) feature
-  else ((feature - min(feature, na.rm = T))/(max(feature, na.rm = T) - min(feature, na.rm = T)))
-}
+
 
 # normalize both variables
 
@@ -94,7 +94,10 @@ normalize.feature <- function( feature ) {
 # print the summary
 
 
-# set the seed
+# open the documentation for the kmeans function
+
+
+# set the seed to assure replicability of the results
 
 
 # run the clustering with 4 clusters, iter.max=20, nstart=1000
@@ -112,33 +115,38 @@ normalize.feature <- function( feature ) {
 # plot the clusters along with their centroids
 
 
+
 #################################
 # Selecting the Best Value for K
 #################################
 
-# create an empty data frame
+# create an empty data frame for storing evaluation measures for different k values
 
 
-# remove the column with clusters
+# remove the column with cluster assignments
 
 
 # run kmeans for all K values in the range 2:8
 
 
-# update the column names
+
+# assign more meaningful column names
 
 
-# print the metrics
+# print the evaluation metrics
 
 
-# plot the line chart for cluster vs. tot.within.ss 
+# plot the line chart for K values vs. tot.within.ss 
 
 
 # load the source code from the Utility.R file
 
 
-# calculate the ratio difference for different K values (from 2 to 8) 
+# calculate the difference in tot.within.ss and in ratio for each two consecutive K values
 
+
+
+# We'll examine the solution with k=3, as that seems to be the best K value
 
 # set the seed value
 
@@ -152,7 +160,9 @@ normalize.feature <- function( feature ) {
 # plot the clusters along with their centroids
 
 
+
 # calculate the mean and sd values for all three clusters 
+
 
 
 #######################################
@@ -165,19 +175,23 @@ normalize.feature <- function( feature ) {
 # print the summary
 
 
-# create an empty data frame
+# create an empty data frame to store evaluation measures
 
 
-# run kmeans for all K values in the range 2:8
+# run kmeans for K values in the range 2:8
 
 
-# update the column names
+
+# assign meaningful column names
 
 
 # plot the clusters along with their centroids
 
 
-# calculate the ratio difference for different K values (from 2 to 8) 
+
+# the plot suggests 3 clusters, but we'll also calculate
+# the difference in tot.within.ss and in ratio for each two consecutive K values
+
 
 
 # set the seed
@@ -187,4 +201,3 @@ normalize.feature <- function( feature ) {
 
 
 # examine cluster centers
-
