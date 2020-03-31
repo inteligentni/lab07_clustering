@@ -39,3 +39,33 @@ normalize.feature <- function( feature ) {
   if ( sum(feature, na.rm = T) == 0 ) feature
   else ((feature - min(feature, na.rm = T))/(max(feature, na.rm = T) - min(feature, na.rm = T)))
 }
+
+
+# The following two functions are for creating and arranging a set of
+# boxplots, one plot for each attribute that was used for clustering.
+# The purpose is to visually compare the distribution of these attributes
+# across the clusters
+create_attr_boxplot <- function(df, attribute) {
+  ggplot(data = df,
+         mapping = aes(x=Clust, y=df[[attribute]], fill=Clust)) +
+    geom_boxplot() + 
+    labs(y = attribute) +
+    theme_classic()
+}
+
+create_comparison_plots <- function(df) {
+  require(dplyr)
+  require(ggpubr)
+  
+  boxplots <- lapply(colnames(df %>% select(-Clust)), 
+                     function(x) create_attr_boxplot(df, x))
+  
+  ggarrange(plotlist = boxplots,
+            ncol = 3, nrow = 2,
+            common.legend = TRUE, legend = "bottom",
+            vjust = 1, hjust = -1, font.label = list(size=12))
+  
+}
+
+
+

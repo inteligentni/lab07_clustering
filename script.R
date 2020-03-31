@@ -129,7 +129,8 @@ ggplot(data=retail.data1.norm, aes(x=Frozen, y=Milk, colour=cluster)) +
        y = "Annual spending on dairy products",
        title = "Retail customers annual spending") + 
   theme_bw() +
-  geom_point(data=as.data.frame(simple.4k$centers), colour="black", size=4, shape=17) # add cluster centers
+  geom_point(data=as.data.frame(simple.4k$centers), 
+             colour="black", size=4, shape="triangle") # add cluster centers
 
 #################################
 # Selecting the Best Value for K
@@ -193,7 +194,7 @@ ggplot(data=retail.data1.norm, aes(x=Frozen, y=Milk, colour=cluster)) +
   ylab("Annual spending on dairy products") +
   ggtitle("Retail customers annual spending") +
   geom_point(data=as.data.frame(simple.3k$centers),
-             colour="black",size=4, shape=17)
+             colour="black",size=4, shape="triangle")
 
 # calculate the mean and sd values for all three clusters 
 sum.stats <- summary.stats(feature.set = retail.data1, 
@@ -227,7 +228,7 @@ for (k in 2:8) {
 names(eval.metrics.6var) <- c("cluster", "tot.within.ss", "ratio")
 eval.metrics.6var
 
-# plot the clusters along with their centroids
+# plot the line chart for K values vs. tot.within.ss 
 ggplot(data=eval.metrics.6var, aes(x=k, y=tot.within.ss)) + 
   geom_line() +
   labs(x = "\nK (cluster number)", 
@@ -249,8 +250,12 @@ set.seed(3108)
 # run the clustering for 3 clusters, iter.max=20, nstart=1000
 retail.3k.6var <- kmeans(x=retail.norm, centers=3, iter.max=20, nstart = 1000)
 
-# examine cluster centers
+# calculate and compare summary statistics (mean and st. deviation) for the three clusters 
 sum.stats <- summary.stats(feature.set = retail.norm, #retail.data[,c(2:7)], 
                            clusters = retail.3k.6var$cluster, 
                            cl.num = 3)
 sum.stats
+
+# plot the distribution of the attributes across the 3 clusters
+retail.norm$Clust <- as.factor(retail.3k.6var$cluster)
+create_comparison_plots(retail.norm)

@@ -461,7 +461,7 @@ eval.metrics.6var
 Draw the Elbow plot.
 
 ```{r fig.height=4}
-# plot the clusters along with their centroids
+# plot the line chart for K values vs. tot.within.ss 
 ggplot(data=eval.metrics.6var, aes(x=k, y=tot.within.ss)) + 
   geom_line() +
   labs(x = "\nK (cluster number)", 
@@ -499,13 +499,21 @@ sum.stats <- summary.stats(feature.set = retail.norm, # retail.data[,c(2:7)],
 sum.stats
 ```
 
+```{r}
+# plot the distribution of the attributes across the 3 clusters
+retail.norm$Clust <- as.factor(retail.3k.6var$cluster)
+create_comparison_plots(retail.norm)
+```
+
+
 **TASK**: try to describe the 3 groups (clusters) of customers based on the items they purchased more / less (compared to the other groups).
 
 
 # Appendix: Utility Functions ('Utility.R' file)
 
 ```{r}
-## function that computes the difference between two consecutive values
+# The function computes the difference between each two consecutive 
+# values in the given vector of values
 compute.difference <- function(values) {
   dif <- list()
   dif[[1]] <- NA
@@ -515,7 +523,7 @@ compute.difference <- function(values) {
   unlist(dif)
 }
 
-## function that provides summary statistics about clusters
+# The function computes summary statistics for individual clusters
 summary.stats <- function(feature.set, clusters, cl.num) {
   sum.stats <- aggregate(x = feature.set, 
                          by = list(clusters), 
@@ -536,5 +544,32 @@ summary.stats <- function(feature.set, clusters, cl.num) {
   colnames(sum.stats.transpose) <- c( "attributes", rep("Mean (SD)", cl.num) )
   rownames(sum.stats.transpose) <- NULL
   sum.stats.transpose
+}
+
+
+# The following two functions are for creating and arranging a set of
+# boxplots, one plot for each attribute that was used for clustering.
+# The purpose is to visually compare the distribution of these attributes
+# across the clusters
+create_attr_boxplot <- function(df, attribute) {
+  ggplot(data = df,
+         mapping = aes(x=Clust, y=df[[attribute]], fill=Clust)) +
+    geom_boxplot() + 
+    labs(y = attribute) +
+    theme_classic()
+}
+
+create_comparison_plots <- function(df) {
+  require(dplyr)
+  require(ggpubr)
+  
+  boxplots <- lapply(colnames(df %>% select(-Clust)), 
+                     function(x) create_attr_boxplot(df, x))
+  
+  ggarrange(plotlist = boxplots,
+            ncol = 3, nrow = 2,
+            common.legend = TRUE, legend = "bottom",
+            vjust = 1, hjust = -1, font.label = list(size=12))
+  
 }
 ```
