@@ -41,37 +41,32 @@ apply(X = retail.data[,-1], # all variables except Region
       MARGIN = 2,
       FUN = function(x) length(boxplot.stats(x)$out))
 
-# sort all outliers of the Grocery variable
-sort(boxplot.stats(retail.data$Grocery)$out)
+# install.packages('DescTools')
+library(DescTools)
 
-# examine percentiles of the Grocery variable higher than the 90th percentile
-quantile(retail.data$Grocery, probs = seq(from = 0.9, to = 1, by = 0.025))
-
-# store the 95th percentile of the Grocery variable to a new variable
-new.max <- as.numeric(quantile(retail.data$Grocery, probs = 0.95))
-
-# to all outliers of the Grocery variable assing the value of the 95th percentile
-retail.data$Grocery[retail.data$Grocery > new.max] <- new.max
-
-# print a boxplot for the Grocery variable
+# Start with the *Grocery* variable. 
 boxplot(retail.data$Grocery, xlab='Grocery')
 
-# sort all outliers of the Frozen variable
-sort(boxplot.stats(retail.data$Frozen)$out)
+# Winsorize the Grocary variable using Winsorize f. from DescTools
+grocery_w <- Winsorize(retail.data$Grocery, 
+                       probs = c(0,0.95)) 
 
-# examine percentiles of the Frozen variable higher than the 90th percentile
-quantile(retail.data$Frozen, probs = c(seq(0.9, 1, 0.025)))
+# Plot the Grocery values after Winsorizing
+boxplot(grocery_w, xlab='Grocery winsorized')
 
-# store the 92.5th percentile of the Frozen variable to a new variable
-new.max <- as.numeric(quantile(retail.data$Frozen, probs = 0.925))
-
-# to all outliers of the Frozen variable assing the value of the 92.5th percentile
-retail.data$Frozen[retail.data$Frozen > new.max] <- new.max
-
-# print a boxplot for the Frozen variable
+# Now, do the same for the *Frozen* variable
 boxplot(retail.data$Frozen, xlab='Frozen')
 
-# print the sumary of the retail.data dataset
+frozen_w <- Winsorize(retail.data$Frozen, 
+                      probs = c(0,0.94)) 
+
+boxplot(frozen_w, xlab='Frozen winsorized')
+
+# update *retail.data* with the winsorized values
+retail.data$Grocery <- grocery_w
+retail.data$Frozen <- frozen_w
+
+# print the summary of the retail.data dataset
 summary(retail.data)
 
 ##############################
@@ -202,34 +197,45 @@ sum.stats <- summary.stats(feature.set = retail.data1,
                            cl.num = 3)
 sum.stats
 
-#######################################
-# Clustering with All Numeric Features
-#######################################
+###########################################
+# Clustering with several numeric features
+###########################################
+
+library(corrplot)
+# compute correlations (avoid the Region variable)
+corr.matrix <- cor(retail.data[,-1])
+# create correlations plot (as was done in the linear regression lab)
+corrplot.mixed(corr.matrix, tl.cex=0.75, number.cex=0.75)
+
+# Remove Grocery due to its high correlation with both Detergents_Paper and Milk
+retail.data <- retail.data[,-4]
+
+summary(retail.data)
 
 # normalize all numeric variables from the retail.data dataset
-retail.norm <- as.data.frame(apply(retail.data[,c(2:7)], 2, normalize.feature))
+retail.norm <- as.data.frame(apply(retail.data[,c(2:6)], 2, normalize.feature))
 
 # print the summary
 summary(retail.norm)
 
 # create an empty data frame to store evaluation measures
-eval.metrics.6var <- data.frame()
+eval.metrics.5var <- data.frame()
 
 # run kmeans for K values in the range 2:8
 for (k in 2:8) {
   set.seed(3108)
   km.res <- kmeans(x=retail.norm, centers=k, iter.max=20, nstart = 1000)
   # combine the K value and the evaluation measures, write to df
-  eval.metrics.6var <- rbind(eval.metrics.6var, 
+  eval.metrics.5var <- rbind(eval.metrics.5var, 
                              c(k, km.res$tot.withinss, km.res$betweenss/km.res$totss)) 
 }
 
 # assign meaningful column names
-names(eval.metrics.6var) <- c("cluster", "tot.within.ss", "ratio")
-eval.metrics.6var
+names(eval.metrics.5var) <- c("cluster", "tot.within.ss", "ratio")
+eval.metrics.5var
 
 # plot the line chart for K values vs. tot.within.ss 
-ggplot(data=eval.metrics.6var, aes(x=k, y=tot.within.ss)) + 
+ggplot(data=eval.metrics.5var, aes(x=cluster, y=tot.within.ss)) + 
   geom_line() +
   labs(x = "\nK (cluster number)", 
        y = "Total Within Cluster Sum of Squares\n",
@@ -240,22 +246,23 @@ ggplot(data=eval.metrics.6var, aes(x=k, y=tot.within.ss)) +
 # the plot suggests 3 clusters, but we'll also calculate
 # the difference in tot.within.ss and in ratio for each two consecutive K values
 data.frame(k=c(2:8),
-           tot.within.ss.delta=compute.difference(eval.metrics.6var$tot.within.ss),
-           ration.delta=compute.difference(eval.metrics.6var$ratio))
+           tot.within.ss.delta=compute.difference(eval.metrics.5var$tot.within.ss),
+           ration.delta=compute.difference(eval.metrics.5var$ratio))
 
 
 # set the seed
 set.seed(3108)
 
 # run the clustering for 3 clusters, iter.max=20, nstart=1000
-retail.3k.6var <- kmeans(x=retail.norm, centers=3, iter.max=20, nstart = 1000)
+retail.3k.5var <- kmeans(x=retail.norm, centers=3, iter.max=20, nstart = 1000)
 
 # calculate and compare summary statistics (mean and st. deviation) for the three clusters 
-sum.stats <- summary.stats(feature.set = retail.norm, #retail.data[,c(2:7)], 
-                           clusters = retail.3k.6var$cluster, 
+sum.stats <- summary.stats(feature.set = retail.norm, #retail.data[,c(2:6)], 
+                           clusters = retail.3k.5var$cluster, 
                            cl.num = 3)
 sum.stats
 
 # plot the distribution of the attributes across the 3 clusters
-retail.norm$Clust <- as.factor(retail.3k.6var$cluster)
-create_comparison_plots(retail.norm)
+create_comparison_plots(df = retail.norm,
+                        clust = as.factor(retail.3k.5var$cluster))
+

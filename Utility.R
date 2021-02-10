@@ -41,24 +41,36 @@ normalize.feature <- function( feature ) {
 }
 
 
-# The following two functions are for creating and arranging a set of
-# boxplots, one plot for each attribute that was used for clustering.
-# The purpose is to visually compare the distribution of these attributes
-# across the clusters
-create_attr_boxplot <- function(df, attribute) {
+## The following two functions are for creating and arranging a set of
+## box plots, one plot for each attribute that was used for clustering.
+## The purpose is to visually compare the distribution of the attributes
+## across the clusters
+# 
+## The 'main' function is create_comparison_plots() that receives 2 input parameters:
+## - a data frame with the attributes used for clustering
+## - a vector with cluster assignments
+## The function creates and arranges box plots for all the attributes.
+# 
+## The create_attr_boxplot() is a helper function for the create_comparison_plots() f.
+## that creates a box plot for one attribute
+create_attr_boxplot <- function(df, attribute, clust_var) {
   ggplot(data = df,
-         mapping = aes(x=Clust, y=df[[attribute]], fill=Clust)) +
+         mapping = aes(x=.data[[clust_var]], 
+                       y=.data[[attribute]], 
+                       fill=.data[[clust_var]])) +
     geom_boxplot() + 
-    labs(y = attribute) +
+    labs(y = attribute, x = "") +
     theme_classic()
 }
 
-create_comparison_plots <- function(df) {
+create_comparison_plots <- function(df, clust) {
   require(dplyr)
   require(ggpubr)
   
-  boxplots <- lapply(colnames(df %>% select(-Clust)), 
-                     function(x) create_attr_boxplot(df, x))
+  df_clust <- df
+  df_clust[['cluster']] <- clust
+  boxplots <- lapply(colnames(df), 
+                     function(x) create_attr_boxplot(df_clust, x, 'cluster'))
   
   ggarrange(plotlist = boxplots,
             ncol = 3, nrow = 2,
