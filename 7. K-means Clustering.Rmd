@@ -153,68 +153,53 @@ apply(X = retail.data[,-1], # all variables except Region
 
 So, *Grocery* and *Frozen* variables have outliers that we need to deal with.
 
-As a way of dealing with outliers, we'll use the [Winsorizing technique](https://en.wikipedia.org/wiki/Winsorizing). Practically, it consists of replacing extreme values with a specific percentile of the data, typically 90th or 95th for overly high values and 5th percentile for overly low values.
-
-Let's start with the *Grocery* variable. We will identify the outliers and sort them by their values.
+As a way of dealing with outliers, we'll use the [Winsorizing technique](https://www.researchgate.net/publication/284500200_Winsorize). Practically, it consists of replacing extreme values with a specific percentile of the data, typically 95th for overly high values and 5th percentile for overly low values. To do that easily, we will use the *Winsorize* function from the *DescTools* package.
 
 ```{r}
-# sort all outliers of the Grocery variable
-sort(boxplot.stats(retail.data$Grocery)$out)
+# install.packages('DescTools')
+library(DescTools)
 ```
 
-Now, we examine the 90th, 95th, ... percentile.
 
+Let's start with the *Grocery* variable. 
 ```{r}
-# examine percentiles of the Grocery variable higher than the 90th percentile
-quantile(retail.data$Grocery, probs = seq(from = 0.9, to = 1, by = 0.025))
-```
-
-The 95th percentile seems to be a good cutting point since it is not an outlier, but is closest to the smallest outlier (`r sort(boxplot.stats(retail.data$Grocery)$out)[1]`)  
-
-```{r}
-# store the 95th percentile of the Grocery variable to a new variable
-new.max <- as.numeric(quantile(retail.data$Grocery, probs = 0.95))
-
-# to all outliers of the Grocery variable assing the value of the 95th percentile
-retail.data$Grocery[retail.data$Grocery > new.max] <- new.max
-```
-
-By drawing the box plot for the *Grocery* variable again we will see that no outliers are present anymore.
-
-```{r fig.height=4, fig.width=4}
-# print the boxplot for the Grocery variable
 boxplot(retail.data$Grocery, xlab='Grocery')
 ```
+All outliers are overly high values. So, we will replace them with the 95th percentile 
+
+```{r}
+grocery_w <- Winsorize(retail.data$Grocery, 
+                       probs = c(0,0.95)) 
+# Note: we do not have overly low values, so, we set 0 as the 1st value for probs to indicate that no change should be done regarding low values; since we need to replace overly high values (see the plot above), we set the 2nd value for probs to 0.95 to indicate that we want to replace values above 95th percentile with the value of the 95th percentile
+
+# Plot the Grocery values after Winsorizing
+boxplot(grocery_w, xlab='Grocery winsorized')
+```
+We can see that no outliers are present anymore.
+
 
 Now, we'll deal, in the same manner, with outliers for the *Frozen* variable.
 
 ```{r}
-# sort all outliers of the Frozen variable
-sort(boxplot.stats(retail.data$Frozen)$out)
-```
-
-```{r}
-# examine percentiles of the Frozen variable higher than the 90th percentile
-quantile(retail.data$Frozen, probs = c(seq(0.9, 1, 0.025)))
-```
-
-Setting values to the 92.5th percentile seem to be a good approach.
-
-```{r fig.height=4, fig.width=4}
-# store the 92.5th percentile of the Frozen variable to a new variable
-new.max <- as.numeric(quantile(retail.data$Frozen, probs = 0.925))
-
-# to all outliers of the Frozen variable assing the value of the 92.5th percentile
-retail.data$Frozen[retail.data$Frozen > new.max] <- new.max
-
-# print a boxplot for the Frozen variable
 boxplot(retail.data$Frozen, xlab='Frozen')
 ```
+```{r}
+# Again, we only have overly high values (no overly low values)
+frozen_w <- Winsorize(retail.data$Frozen, 
+                       probs = c(0,0.94)) 
+# Note that here we use 94th percentile, as with the 95th percentile we were not able to remove all the outliers
 
-Finally, examine the *retail.data* after the transformations.
+# Plot the Grocery values after Winsorizing
+boxplot(frozen_w, xlab='Frozen winsorized')
+```
+
+Finally, update *retail.data* and examine it after the transformations.
 
 ```{r}
-# print the sumary of the retail.data dataset
+retail.data$Grocery <- grocery_w
+retail.data$Frozen <- frozen_w
+
+# print the summary of the retail.data dataset
 summary(retail.data)
 ```
 
@@ -222,7 +207,7 @@ summary(retail.data)
 
 Let's choose only two features for this initial, simple clustering.
 
-*NOTE:* Clustering with two features only is used here just for the sake of clearer exlanation of the clustering steps and the results; in real-world situations, multiple (numerical) features are used for clustering. 
+*NOTE:* Clustering with two features only is used here just for the sake of clearer explanation of the clustering steps and the results; in real-world situations, multiple (numerical) features are used for clustering. 
 
 ```{r}
 # print the matrix of scatterplots for all numeric variables
@@ -426,13 +411,32 @@ sum.stats
 
 Considering the high level of dispersion around the cluster centers (observe the high value of SD in all clusters and for both variables), it might be that the solution with K=4 clusters (the inital one) is better after all. To check if that is the case, for K=4, compute the cluster centers (mean) and dispersion (SD).
 
-# Clustering with All Numeric Features
+# Clustering with several numeric features
 
-Since the 6 numeric attributes differ in their value ranges, we need to normalize them, that is, transform them to the value range [0,1].
+First, we need to check if some of the variable are highly correlated. The use of highly correlated variables can negatively affect cluster analysis so that patterns detected in the data may not be the true ones.
+Therefore, we will first compute and plot correlations for all variable pairs.
+
+```{r}
+library(corrplot)
+
+# compute correlations (avoid the Region variable)
+corr.matrix <- cor(retail.data[,-1])
+# create correlations plot (as was done in the linear regression lab)
+corrplot.mixed(corr.matrix, tl.cex=0.75, number.cex=0.75)
+
+```
+Since Grocery is highly correlated with both Detergents_Paper and Milk, we will not use it for clustering.
+```{r}
+retail.data <- retail.data[,-4]
+
+summary(retail.data)
+```
+
+Since the 5 remaining numeric attributes differ in their value ranges, we need to normalize them, that is, transform them to the value range [0,1].
 
 ```{r}
 # normalize all numeric variables from the retail.data dataset
-retail.norm <- as.data.frame(apply(retail.data[,c(2:7)], 2, normalize.feature))
+retail.norm <- as.data.frame(apply(retail.data[,c(2:6)], 2, normalize.feature))
 
 # print the summary
 summary(retail.norm)
@@ -442,27 +446,27 @@ Instead of guessing K, we'll right away use the Elbow method to find the optimal
 
 ```{r}
 # create an empty data frame to store evaluation measures
-eval.metrics.6var <- data.frame()
+eval.metrics.5var <- data.frame()
 
 # run kmeans for K values in the range 2:8
 for (k in 2:8) {
   set.seed(5320)
   km.res <- kmeans(x=retail.norm, centers=k, iter.max=20, nstart = 1000)
   # combine the K value and the evaluation measures, write to df
-  eval.metrics.6var <- rbind(eval.metrics.6var, 
+  eval.metrics.5var <- rbind(eval.metrics.5var, 
                              c(k, km.res$tot.withinss, km.res$betweenss/km.res$totss)) 
 }
 
 # assign meaningful column names
-names(eval.metrics.6var) <- c("k", "tot.within.ss", "ratio")
-eval.metrics.6var
+names(eval.metrics.5var) <- c("k", "tot.within.ss", "ratio")
+eval.metrics.5var
 ```
 
 Draw the Elbow plot.
 
 ```{r fig.height=4}
 # plot the line chart for K values vs. tot.within.ss 
-ggplot(data=eval.metrics.6var, aes(x=k, y=tot.within.ss)) + 
+ggplot(data=eval.metrics.5var, aes(x=k, y=tot.within.ss)) + 
   geom_line() +
   labs(x = "\nK (cluster number)", 
        y = "Total Within Cluster Sum of Squares\n",
@@ -477,8 +481,8 @@ Still, we'll also examine the difference between each two consecutive values of 
 ```{r}
 # calculate the difference in tot.within.ss and in ratio for each two consecutive K values
 data.frame(k=c(2:8),
-           tot.within.ss.delta=compute.difference(eval.metrics.6var$tot.within.ss),
-           ration.delta=compute.difference(eval.metrics.6var$ratio))
+           tot.within.ss.delta=compute.difference(eval.metrics.5var$tot.within.ss),
+           ration.delta=compute.difference(eval.metrics.5var$ratio))
 ```
 
 This again suggests 3 clusters as the best option.
@@ -490,19 +494,22 @@ Let's examine in detail clustering with K=3.
 set.seed(5320)
 
 # run the clustering for 3 clusters, iter.max=20, nstart=1000
-retail.3k.6var <- kmeans(x=retail.norm, centers=3, iter.max=20, nstart = 1000)
+retail.3k.5var <- kmeans(x=retail.norm, centers=3, iter.max=20, nstart = 1000)
 
 # examine cluster centers
-sum.stats <- summary.stats(feature.set = retail.norm, # retail.data[,c(2:7)],
-                           clusters = retail.3k.6var$cluster, 
+sum.stats <- summary.stats(feature.set = retail.norm, # retail.data[,c(2:6)],
+                           clusters = retail.3k.5var$cluster, 
                            cl.num = 3)
 sum.stats
 ```
 
+
 ```{r}
-# plot the distribution of the attributes across the 3 clusters
-retail.norm$Clust <- as.factor(retail.3k.6var$cluster)
-create_comparison_plots(retail.norm)
+# Plot the distribution of the attributes across the 3 clusters
+# See the description of the create_comparison_plots() function (in the Utility.R script)
+# to see what arguments the function expects
+create_comparison_plots(df = retail.norm, 
+                        clust = as.factor(retail.3k.5var$cluster))
 ```
 
 
@@ -548,23 +555,35 @@ summary.stats <- function(feature.set, clusters, cl.num) {
 
 
 # The following two functions are for creating and arranging a set of
-# boxplots, one plot for each attribute that was used for clustering.
-# The purpose is to visually compare the distribution of these attributes
+# box plots, one plot for each attribute that was used for clustering.
+# The purpose is to visually compare the distribution of the attributes
 # across the clusters
-create_attr_boxplot <- function(df, attribute) {
+# 
+# The 'main' function is create_comparison_plots() that receives 2 input parameters:
+# - a data frame with the attributes used for clustering
+# - a vector with cluster assignments
+# The function creates and arranges box plots for all the attributes.
+# 
+# The create_attr_boxplot() is a helper function for the create_comparison_plots() f.
+# that creates a box plot for one attribute
+create_attr_boxplot <- function(df, attribute, clust_var) {
   ggplot(data = df,
-         mapping = aes(x=Clust, y=df[[attribute]], fill=Clust)) +
+         mapping = aes(x=.data[[clust_var]], 
+                       y=.data[[attribute]], 
+                       fill=.data[[clust_var]])) +
     geom_boxplot() + 
-    labs(y = attribute) +
+    labs(y = attribute, x = "") +
     theme_classic()
 }
 
-create_comparison_plots <- function(df) {
+create_comparison_plots <- function(df, clust) {
   require(dplyr)
   require(ggpubr)
   
-  boxplots <- lapply(colnames(df %>% select(-Clust)), 
-                     function(x) create_attr_boxplot(df, x))
+  df_clust <- df
+  df_clust[['cluster']] <- clust
+  boxplots <- lapply(colnames(df), 
+                     function(x) create_attr_boxplot(df_clust, x, 'cluster'))
   
   ggarrange(plotlist = boxplots,
             ncol = 3, nrow = 2,
