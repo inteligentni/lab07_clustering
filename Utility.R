@@ -35,11 +35,6 @@ summary.stats <- function(feature.set, clusters, cl.num) {
   sum.stats.transpose
 }
 
-normalize.feature <- function( feature ) {
-  if ( sum(feature, na.rm = T) == 0 ) feature
-  else ((feature - min(feature, na.rm = T))/(max(feature, na.rm = T) - min(feature, na.rm = T)))
-}
-
 
 ## The following two functions are for creating and arranging a set of
 ## box plots, one plot for each attribute that was used for clustering.
@@ -48,7 +43,7 @@ normalize.feature <- function( feature ) {
 # 
 ## The 'main' function is create_comparison_plots() that receives 2 input parameters:
 ## - a data frame with the attributes used for clustering
-## - a vector with cluster assignments
+## - a factor variable with cluster assignments
 ## The function creates and arranges box plots for all the attributes.
 # 
 ## The create_attr_boxplot() is a helper function for the create_comparison_plots() f.
