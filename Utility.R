@@ -2,6 +2,24 @@
 ## UTILITY FUNCTIONS #
 ######################
 
+## Winsorize function from the DescTools package;
+## it is copied here in case we do not have access to the package
+Winsorize <- function(x, minval = NULL, maxval = NULL,
+                      probs=c(0.05, 0.95), na.rm = FALSE, type=7) {
+  
+  if(is.null(minval) || is.null(maxval)){
+    xq <- quantile(x=x, probs=probs, na.rm=na.rm, type=type)
+    if(is.null(minval)) minval <- xq[1L]
+    if(is.null(maxval)) maxval <- xq[2L]
+  }
+  
+  x[x<minval] <- minval
+  x[x>maxval] <- maxval
+  
+  return(x)
+}
+
+
 ## function that computes the difference between two subsequent values
 compute.difference <- function(values) {
   dif <- list()
