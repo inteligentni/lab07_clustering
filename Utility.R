@@ -22,7 +22,8 @@ Winsorize <- function(x, minval = NULL, maxval = NULL,
 
 ## function that computes the difference between two subsequent values
 compute.difference <- function(values) {
-  abs(values - lag(values))
+  require(dplyr)
+  abs(values - dplyr::lag(values))
 }
 
 ## function that provides summary statistics about clusters
