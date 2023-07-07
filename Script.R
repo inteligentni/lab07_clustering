@@ -82,8 +82,15 @@ summary(retail.data)
 
 # function for performing the normalization
 normalize.feature <- function( feature ) {
-  if ( sum(feature, na.rm = T) == 0 ) feature
-  else ((feature - min(feature, na.rm = T))/(max(feature, na.rm = T) - min(feature, na.rm = T)))
+  # handling situations where all values of a feature (except missing values) are 0s 
+  if ( all(is.na(feature) | (feature == 0)) ) 
+    return(feature)
+  # handling situations where min and max are equal, to prevent the result with all NaN values
+  if (max(feature, na.rm = T) == min(feature, na.rm = T)) {
+    print("The feature cannot be normalized (min and max are the same). Returning the feature as is")
+    return(feature)
+  }
+  (feature - min(feature, na.rm = T))/(max(feature, na.rm = T) - min(feature, na.rm = T))
 }
 
 # normalize all numeric variables from the retail.data dataset
